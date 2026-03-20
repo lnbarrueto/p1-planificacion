@@ -59,3 +59,34 @@ def leer_tareas(path: str) -> List[Tarea]:
 
     # devolvemos la lista completa de tareas
     return tareas
+
+# Esta función lee el archivo de recursos y devuelve una lista de objetos Recurso
+def leer_recursos(path: str) -> List[Recurso]:
+
+    # lista donde guardaremos los recursos
+    recursos = []
+
+    # abrimos el archivo en modo lectura
+    with open(path) as f:
+
+        # recorremos cada línea del archivo
+        for linea in f:
+
+            # quitamos espacios y saltos de línea
+            linea = linea.strip()
+
+            # si la línea está vacía, la ignoramos
+            if linea == "":
+                continue
+
+            # la línea contiene el id del recurso
+            rid = linea
+
+            # creamos un objeto Recurso
+            recurso = Recurso(rid)
+
+            # lo agregamos a la lista
+            recursos.append(recurso)
+
+    # devolvemos la lista completa
+    return recursos
