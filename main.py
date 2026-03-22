@@ -68,29 +68,36 @@ def leer_tareas(path: str) -> List[Tarea]:
 def leer_recursos(path: str) -> List[Recurso]:
 
     # lista donde guardaremos los recursos
-    recursos = []
+    recursos: List[Recurso] = []
 
     # abrimos el archivo en modo lectura
-    with open(path,"r") as f:
+    with open(path,"r", encoding="uft-8") as archivo:
 
         # recorremos cada línea del archivo
-        for linea in f:
+        for linea in archivo:
 
             # quitamos espacios y saltos de línea
             linea = linea.strip()
 
             # si la línea está vacía, la ignoramos
-            if not linea: continue
-            partes = linea.split(",")
+            if not linea: 
+                continue
+
+            partes = [p.strip() for p in linea.split(",")]
 
             # la línea contiene el id del recurso
             rid = partes[0]
 
             # creamos un objeto Recurso
-            cats = set(partes[1:])
+            categorias = set(partes[1:])
 
             # lo agregamos a la lista
-            recursos.append(Recurso(rid, cats))
+            recursos.append(
+                Recurso(
+                    id=rid,
+                    categorias_compatibles=categorias,
+                )
+            )
 
     # devolvemos la lista completa
     return recursos
