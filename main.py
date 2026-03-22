@@ -213,3 +213,14 @@ def calcular_makespan(asignaciones: List[Asignacion]) -> int:
         return 0
 
     return max(a.fin for a in asignaciones)
+
+# Escribe el resultado en output.txt
+def escribir_output(path: str, asignaciones: List[Asignacion]) -> None:
+
+    with open(path, "w", encoding="utf-8") as archivo:
+
+        for a in asignaciones:
+
+            archivo.write(
+                f"{a.id_tarea},{a.id_recurso},{a.inicio},{a.fin}\n"
+            )
