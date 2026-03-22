@@ -226,16 +226,34 @@ def escribir_output(path: str, asignaciones: List[Asignacion]) -> None:
             )
 def main():
 
+    # Verificamos que se haya pasado el makespan objetivo
+    if len(sys.argv) != 2:
+        print("Uso: python main.py <makespan_objetivo>")
+        sys.exit(1)
+
+    # Convertimos el argumento a entero
+    try:
+        makespan_objetivo = int(sys.argv[1])
+    except ValueError:
+        print("Error: el makespan objetivo debe ser un numero")
+        sys.exit(1)
+
+    # Leer archivos
     tareas = leer_tareas("tareas.txt")
     recursos = leer_recursos("recursos.txt")
 
+    # Planificar
     asignaciones = planificar(tareas, recursos)
 
+    # Escribir salida
     escribir_output("output.txt", asignaciones)
 
+    # Calcular makespan
     makespan = calcular_makespan(asignaciones)
 
-    print("Makespan:", makespan)
+    print("Makespan obtenido:", makespan)
+    print("Makespan objetivo:", makespan_objetivo)
+
 
 if __name__ == "__main__":
     main()
