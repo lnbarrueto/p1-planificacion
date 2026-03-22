@@ -23,7 +23,7 @@ class Recurso:
     
 
 @dataclass(frozen=True)
-class Asignación:
+class Asignacion:
     id_tarea: str
     id_recurso: str
     inicio: int
@@ -114,9 +114,9 @@ def construir_compatibilidad(
             if tarea.categoria in recurso.categorias_compatibles:
                 compatibles.append(recurso.id)
 
-            compatibilidad[tarea.id] = compatibles
+        compatibilidad[tarea.id] = compatibles
 
-        return compatibilidad
+    return compatibilidad
     
 
 def ordenar_tareas(
@@ -131,45 +131,47 @@ def ordenar_tareas(
 
 
 
-def planificar(tareas: List[Tarea], recursos: List[Recurso]):
-    resultado=[]
-    for t in tareas:
-        compatibles=[r for r in recursos if t.categoria in r.categorias_compatibles]
+def planificar(tareas: List[Tarea], recursos: List[Recurso]) -> List[Asignacion]:
+    compatibilidad = construir_compatibilidad(tareas, recursos)
 
-        if not compatibles:
-            print(f"No hay recurso para {t.id}({t.categoria})")
-            continue
-        r_elegido=min(compatibles, key=lambda x: x.disponible)
-        inicio=r_elegido.disponible
-        fin=inicio+t.duracion
-        #guardamos asignacion y actualiza tiempo del recurso
-        resultado.append((t.id, r_elegido.id, inicio, fin))
-        r_elegido.disponible=fin
-    return resultado
-    
-if __name__ == "__main__":
-    # Capturamos el makespan del comando (ej: python main.py 12)
-    makespan_objetivo = sys.argv[1] if len(sys.argv) > 1 else "0"
-    
-    print(f"Iniciando planificación (Objetivo: {makespan_objetivo})...")
-    
-    try:
-        # 1. Cargar datos desde TUS archivos
-        mis_tareas = leer_tareas("tareas.txt")
-        mis_recursos = leer_recursos("recursos.txt")
-        
-        #2. Ordenar tareas
-        mis_tareas.sort(key=lambda x: x.duracion, reverse=True)
-        # 3. Ejecutar la lógica (la función planificar que definimos antes)
-        resultado_plan = planificar(mis_tareas, mis_recursos)
-        
-        # 4. Generar output.txt (ID_Tarea,ID_Recurso,Inicio,Fin)
-        with open("output.txt", "w") as f:
-            for p in resultado_plan:
-                # p[0]=ID_Tarea, p[1]=ID_Recurso, p[2]=Inicio, p[3]=Fin
-                f.write(f"{p[0]},{p[1]},{p[2]},{p[3]}\n")
-        
-        print("✅ Éxito: Se ha generado 'output.txt' correctamente.")
+    for tarea in tareas:
+        if not compatibilidad[tarea.id]:
+            raise ValueError(
+                f"La tarea {tarea.id} no tiene recursos compatibles"
+            )
 
-    except Exception as e:
-        print(f"❌ Error durante la ejecución: {e}")
+    tareas_ordenadas = ordenar_tareas(tareas, compatibilidad)
+    disponible: Dict[str, int] = {recurso.id: 0 for recurso in recursos}
+
+    asignaciones: List[Asignacion] = []
+
+    for tarea in tareas_ordenadas:
+        compatibles = compatibilidad[tarea.id]
+
+       
+        mejor_recurso = min(
+            compatibles,
+            key=lambda rid: (
+                disponible[rid] + tarea.duracion,
+                disponible[rid],
+                rid,
+            ),
+        )
+
+        inicio = disponible[mejor_recurso]
+        fin = inicio + tarea.duracion
+
+        asignaciones.append(
+            Asignacion(
+                id_tarea=tarea.id,
+                id_recurso=mejor_recurso,
+                inicio=inicio,
+                fin=fin,
+            )
+        )
+
+        disponible[mejor_recurso] = fin
+
+    return asignaciones
+
+    
