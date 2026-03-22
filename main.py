@@ -1,28 +1,33 @@
 from __future__ import annotations
-import csv
+
 import sys
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
 #Tarea guarda el identificador y la duración
 #Recurso guarda el identificador y cuándo queda libre
 #@dataclass hace más fácil crear objetos sin escribir tanto código
+#frozen=True hace que los objetos sean inmutables
 
-@dataclass
+@dataclass(frozen=True)
 class Tarea:
     id: str
     duracion: int
     categoria:str #Añadimos para saber que categoria es
 
 
-@dataclass
+@dataclass(frozen=True)
 class Recurso:
     id: str
-    categorias_compatibles:set[str]
-    disponible: int = 0
-from typing import List
+    categorias_compatibles:Set[str]
+    
 
+@dataclass(frozen=True)
+class Asignación:
+    id_tarea: str
+    id_recurso: str
+    inicio: int
+    fin: int
 
 # Esta función lee el archivo de tareas y devuelve una lista de objetos Tarea
 def leer_tareas(path: str) -> List[Tarea]:
