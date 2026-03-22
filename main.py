@@ -175,3 +175,7 @@ def planificar(tareas: List[Tarea], recursos: List[Recurso]) -> List[Asignacion]
     return asignaciones
 
     
+def calcular_makespan(asignaciones: List[Asignacion]) -> int:
+    if not asignaciones:
+        return 0
+    return max(a.fin for a in asignaciones)
