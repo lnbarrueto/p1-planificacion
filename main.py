@@ -119,6 +119,18 @@ def construir_compatibilidad(
         return compatibilidad
     
 
+def ordenar_tareas(
+        tareas: List[Tarea],
+        compatibilidad: Dict[str, List[str]],
+) -> List[Tarea]:
+    
+    return sorted(
+        tareas,
+        key=lambda t: (len(compatibilidad[t.id]), -t.duracion, t.id),                   
+    )
+
+
+
 def planificar(tareas: List[Tarea], recursos: List[Recurso]):
     resultado=[]
     for t in tareas:
