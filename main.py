@@ -4,23 +4,24 @@ import sys
 from dataclasses import dataclass
 from typing import Dict, List, Set, Tuple
 
-#Tarea guarda el identificador y la duración
-#Recurso guarda el identificador y cuándo queda libre
-#@dataclass hace más fácil crear objetos sin escribir tanto código
-#frozen=True hace que los objetos sean inmutables
+
+# Tarea guarda el identificador, duración y categoría
+# Recurso guarda el identificador y categorías compatibles
+# Asignacion guarda el resultado final
+# frozen=True hace que los objetos sean inmutables
 
 @dataclass(frozen=True)
 class Tarea:
     id: str
     duracion: int
-    categoria:str #Añadimos para saber que categoria es
+    categoria: str  # categoría de la tarea
 
 
 @dataclass(frozen=True)
 class Recurso:
     id: str
-    categorias_compatibles:Set[str]
-    
+    categorias_compatibles: Set[str]
+
 
 @dataclass(frozen=True)
 class Asignacion:
@@ -29,6 +30,7 @@ class Asignacion:
     inicio: int
     fin: int
 
+
 # Esta función lee el archivo de tareas y devuelve una lista de objetos Tarea
 def leer_tareas(path: str) -> List[Tarea]:
 
@@ -36,7 +38,7 @@ def leer_tareas(path: str) -> List[Tarea]:
     tareas: List[Tarea] = []
 
     # abrimos el archivo en modo lectura
-    with open(path, "r",encoding="uft-8") as archivo:
+    with open(path, "r", encoding="utf-8") as archivo:   # ← corregido utf-8
 
         # recorremos cada línea del archivo
         for linea in archivo:
@@ -45,24 +47,24 @@ def leer_tareas(path: str) -> List[Tarea]:
             linea = linea.strip()
 
             # si la línea está vacía, la ignoramos
-            if not linea: 
+            if not linea:
                 continue
 
             # separamos la línea por coma
-            # ejemplo: "T1,5" -> ["T1", "5"]
             partes = [p.strip() for p in linea.split(",")]
 
-            # el primer elemento es el id de la tarea
+            # creamos la tarea con id, duración y categoría
             tareas.append(
                 Tarea(
-                    id=partes[0], 
-                    duración=int(partes[1]), 
+                    id=partes[0],
+                    duracion=int(partes[1]),   # ← corregido (sin tilde)
                     categoria=partes[2],
                 )
             )
 
     # devolvemos la lista completa de tareas
     return tareas
+
 
 # Esta función lee el archivo de recursos y devuelve una lista de objetos Recurso
 def leer_recursos(path: str) -> List[Recurso]:
@@ -71,7 +73,7 @@ def leer_recursos(path: str) -> List[Recurso]:
     recursos: List[Recurso] = []
 
     # abrimos el archivo en modo lectura
-    with open(path,"r", encoding="uft-8") as archivo:
+    with open(path, "r", encoding="utf-8") as archivo:   # ← corregido utf-8
 
         # recorremos cada línea del archivo
         for linea in archivo:
@@ -80,18 +82,18 @@ def leer_recursos(path: str) -> List[Recurso]:
             linea = linea.strip()
 
             # si la línea está vacía, la ignoramos
-            if not linea: 
+            if not linea:
                 continue
 
             partes = [p.strip() for p in linea.split(",")]
 
-            # la línea contiene el id del recurso
+            # el primer elemento es el id del recurso
             rid = partes[0]
 
-            # creamos un objeto Recurso
+            # el resto son categorías compatibles
             categorias = set(partes[1:])
 
-            # lo agregamos a la lista
+            # creamos el objeto recurso
             recursos.append(
                 Recurso(
                     id=rid,
@@ -103,52 +105,79 @@ def leer_recursos(path: str) -> List[Recurso]:
     return recursos
 
 
+# Construye un diccionario que dice qué recursos sirven para cada tarea
 def construir_compatibilidad(
     tareas: List[Tarea], recursos: List[Recurso]
 ) -> Dict[str, List[str]]:
+
     compatibilidad: Dict[str, List[str]] = {}
 
-    for tarea in tareas: 
+    for tarea in tareas:
+
         compatibles: List[str] = []
-        for recurso in recursos: 
+
+        for recurso in recursos:
+
+            # si la categoría de la tarea está en las compatibles del recurso
             if tarea.categoria in recurso.categorias_compatibles:
                 compatibles.append(recurso.id)
 
         compatibilidad[tarea.id] = compatibles
 
     return compatibilidad
-    
 
+
+# Ordena tareas:
+# primero las que tienen menos recursos compatibles
+# luego las más largas
+# luego por id para estabilidad
 def ordenar_tareas(
-        tareas: List[Tarea],
-        compatibilidad: Dict[str, List[str]],
+    tareas: List[Tarea],
+    compatibilidad: Dict[str, List[str]],
 ) -> List[Tarea]:
-    
+
     return sorted(
         tareas,
-        key=lambda t: (len(compatibilidad[t.id]), -t.duracion, t.id),                   
+        key=lambda t: (
+            len(compatibilidad[t.id]),
+            -t.duracion,
+            t.id,
+        ),
     )
 
 
+# Algoritmo principal de planificación
+def planificar(
+    tareas: List[Tarea],
+    recursos: List[Recurso],
+) -> List[Asignacion]:
 
-def planificar(tareas: List[Tarea], recursos: List[Recurso]) -> List[Asignacion]:
+    # construimos compatibilidad tarea → recursos posibles
     compatibilidad = construir_compatibilidad(tareas, recursos)
 
+    # verificamos que cada tarea tenga al menos un recurso compatible
     for tarea in tareas:
         if not compatibilidad[tarea.id]:
             raise ValueError(
                 f"La tarea {tarea.id} no tiene recursos compatibles"
             )
 
+    # ordenamos tareas con la heurística
     tareas_ordenadas = ordenar_tareas(tareas, compatibilidad)
-    disponible: Dict[str, int] = {recurso.id: 0 for recurso in recursos}
+
+    # diccionario con disponibilidad de cada recurso
+    disponible: Dict[str, int] = {
+        recurso.id: 0 for recurso in recursos
+    }
 
     asignaciones: List[Asignacion] = []
 
+    # asignamos tarea por tarea
     for tarea in tareas_ordenadas:
+
         compatibles = compatibilidad[tarea.id]
 
-       
+        # elegimos el recurso que termina antes
         mejor_recurso = min(
             compatibles,
             key=lambda rid: (
@@ -161,6 +190,7 @@ def planificar(tareas: List[Tarea], recursos: List[Recurso]) -> List[Asignacion]
         inicio = disponible[mejor_recurso]
         fin = inicio + tarea.duracion
 
+        # guardamos asignación
         asignaciones.append(
             Asignacion(
                 id_tarea=tarea.id,
@@ -170,12 +200,16 @@ def planificar(tareas: List[Tarea], recursos: List[Recurso]) -> List[Asignacion]
             )
         )
 
+        # actualizamos disponibilidad
         disponible[mejor_recurso] = fin
 
     return asignaciones
 
-    
+
+# Calcula el makespan = máximo tiempo de término
 def calcular_makespan(asignaciones: List[Asignacion]) -> int:
+
     if not asignaciones:
         return 0
+
     return max(a.fin for a in asignaciones)
