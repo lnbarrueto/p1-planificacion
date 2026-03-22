@@ -102,6 +102,23 @@ def leer_recursos(path: str) -> List[Recurso]:
     # devolvemos la lista completa
     return recursos
 
+
+def construir_compatibilidad(
+    tareas: List[Tarea], recursos: List[Recurso]
+) -> Dict[str, List[str]]:
+    compatibilidad: Dict[str, List[str]] = {}
+
+    for tarea in tareas: 
+        compatibles: List[str] = []
+        for recurso in recursos: 
+            if tarea.categoria in recurso.categorias_compatibles:
+                compatibles.append(recurso.id)
+
+            compatibilidad[tarea.id] = compatibles
+
+        return compatibilidad
+    
+
 def planificar(tareas: List[Tarea], recursos: List[Recurso]):
     resultado=[]
     for t in tareas:
