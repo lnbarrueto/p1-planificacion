@@ -224,3 +224,18 @@ def escribir_output(path: str, asignaciones: List[Asignacion]) -> None:
             archivo.write(
                 f"{a.id_tarea},{a.id_recurso},{a.inicio},{a.fin}\n"
             )
+def main():
+
+    tareas = leer_tareas("tareas.txt")
+    recursos = leer_recursos("recursos.txt")
+
+    asignaciones = planificar(tareas, recursos)
+
+    escribir_output("output.txt", asignaciones)
+
+    makespan = calcular_makespan(asignaciones)
+
+    print("Makespan:", makespan)
+
+if __name__ == "__main__":
+    main()
