@@ -33,26 +33,33 @@ class Asignación:
 def leer_tareas(path: str) -> List[Tarea]:
 
     # lista donde guardaremos todas las tareas
-    tareas = []
+    tareas: List[Tarea] = []
 
     # abrimos el archivo en modo lectura
-    with open(path, "r") as f:
+    with open(path, "r",encoding="uft-8") as archivo:
 
         # recorremos cada línea del archivo
-        for linea in f:
+        for linea in archivo:
 
             # quitamos espacios y saltos de línea al inicio y final
             linea = linea.strip()
 
             # si la línea está vacía, la ignoramos
-            if not linea: continue
+            if not linea: 
+                continue
 
             # separamos la línea por coma
             # ejemplo: "T1,5" -> ["T1", "5"]
-            partes = linea.split(",")
+            partes = [p.strip() for p in linea.split(",")]
 
             # el primer elemento es el id de la tarea
-            tareas.append(Tarea(partes[0], int(partes[1]), partes[2]))
+            tareas.append(
+                Tarea(
+                    id=partes[0], 
+                    duración=int(partes[1]), 
+                    categoria=partes[2],
+                )
+            )
 
     # devolvemos la lista completa de tareas
     return tareas
