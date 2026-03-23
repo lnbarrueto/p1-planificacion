@@ -253,7 +253,11 @@ def main():
 
     print("Makespan obtenido:", makespan)
     print("Makespan objetivo:", makespan_objetivo)
-
+    #corroboración makespan
+    if makespan <= makespan_objetivo:
+        print("Cumple el objetivo")
+    else:
+        print("No cumple el objetivo")
 
 if __name__ == "__main__":
     main()
