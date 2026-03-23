@@ -1,4 +1,0 @@
-R1,CAT_A
-R2,CAT_A
-R3,CAT_A
-R4,CAT_A

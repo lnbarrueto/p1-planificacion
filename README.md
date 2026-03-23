@@ -2,7 +2,7 @@
 
 Integrantes:
 - Luca Barrueto
-- Agustin Dreyffus
+- Agustin Dreyfus
 - Martín Villegas
 
 # Cómo ejecutar
