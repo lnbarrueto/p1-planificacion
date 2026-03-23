@@ -224,40 +224,54 @@ def escribir_output(path: str, asignaciones: List[Asignacion]) -> None:
             archivo.write(
                 f"{a.id_tarea},{a.id_recurso},{a.inicio},{a.fin}\n"
             )
-def main():
 
-    # Verificamos que se haya pasado el makespan objetivo
+def main():
+    # 1. Verificación inicial de argumentos
     if len(sys.argv) != 2:
         print("Uso: python main.py <makespan_objetivo>")
         sys.exit(1)
 
-    # Convertimos el argumento a entero
+    # 2. Manejo de errores general 
     try:
         makespan_objetivo = int(sys.argv[1])
-    except ValueError:
-        print("Error: el makespan objetivo debe ser un numero")
-        sys.exit(1)
+        
+        print("--- Iniciando proceso de planificación ---")
 
-    # Leer archivos
-    tareas = leer_tareas("tareas.txt")
-    recursos = leer_recursos("recursos.txt")
+        # Leer archivos 
+        print("Cargando datos de entrada...")
+        tareas = leer_tareas("tareas.txt")
+        recursos = leer_recursos("recursos.txt")
 
-    # Planificar
-    asignaciones = planificar(tareas, recursos)
+        # Planificar 
+        asignaciones = planificar(tareas, recursos)
 
-    # Escribir salida
-    escribir_output("output.txt", asignaciones)
+        # Escribir salida y avisar 
+        escribir_output("output.txt", asignaciones)
+        print("Archivo 'output.txt' generado correctamente.")
 
-    # Calcular makespan
-    makespan = calcular_makespan(asignaciones)
+        # Calcular y mostrar resultados finales 
+        makespan = calcular_makespan(asignaciones)
+        
+        print("\n" + "="*30)
+        print(f"Makespan obtenido: {makespan}")
+        print(f"Makespan objetivo: {makespan_objetivo}")
+        
+        if makespan <= makespan_objetivo:
+            print("RESULTADO: CUMPLE EL OBJETIVO ")
+        else:
+            print("RESULTADO: NO CUMPLE EL OBJETIVO")
+        print("="*30)
 
-    print("Makespan obtenido:", makespan)
-    print("Makespan objetivo:", makespan_objetivo)
-    #corroboración makespan
-    if makespan <= makespan_objetivo:
-        print("Cumple el objetivo")
-    else:
-        print("No cumple el objetivo")
+    # Bloques para capturar errores específicos 
+    except FileNotFoundError:
+        print("Error: No se encontró uno de los archivos .txt (tareas o recursos).")
+    except ValueError as e:
+        if "invalid literal for int()" in str(e):
+            print("Error: El makespan objetivo debe ser un número entero.")
+        else:
+            print(f"Error en los datos de los archivos: {e}")
+    except Exception as e:
+        print(f"Ocurrió un fallo inesperado: {e}")
 
 if __name__ == "__main__":
     main()
