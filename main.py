@@ -187,8 +187,8 @@ def main():
     try:
         makespan_objetivo = int(sys.argv[1])
         
-        tareas = leer_tareas("tareas.txt")
-        recursos = leer_recursos("recursos.txt")
+        tareas = leer_tareas("tareas_EP.txt")
+        recursos = leer_recursos("recursos_EP.txt")
 
         asignaciones = planificar(tareas, recursos)
 
