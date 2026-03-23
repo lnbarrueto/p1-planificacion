@@ -225,52 +225,35 @@ def escribir_output(path: str, asignaciones: List[Asignacion]) -> None:
                 f"{a.id_tarea},{a.id_recurso},{a.inicio},{a.fin}\n"
             )
 
-# Esta función nueva encapsula todo el proceso para poder repetirlo fácil
-def ejecutar_planificacion(archivo_t: str, archivo_r: str, objetivo: int):
-    try:
-        print(f"\n>>> Procesando: {archivo_t} y {archivo_r}")
-        
-        tareas = leer_tareas(archivo_t)
-        recursos = leer_recursos(archivo_r)
-        
-        asignaciones = planificar(tareas, recursos)
-        
-        # Generamos un archivo de salida único para cada set
-        nombre_salida = f"output_{archivo_t}" 
-        escribir_output(nombre_salida, asignaciones)
-        
-        makespan = calcular_makespan(asignaciones)
-        
-        print(f"Archivo '{nombre_salida}' generado.")
-        print(f"Makespan obtenido: {makespan} | Objetivo: {objetivo}")
-        
-        if makespan <= objetivo:
-            print("RESULTADO: CUMPLE EL OBJETIVO")
-        else:
-            print("RESULTADO: NO CUMPLE EL OBJETIVO ")
-            
-    except FileNotFoundError as e:
-        print(f"Error: No se encontró el archivo {e.filename}")
-    except Exception as e:
-        print(f"Ocurrió un error con {archivo_t}: {e}")
-
 def main():
     if len(sys.argv) != 2:
-        print("Uso: python main.py <makespan_objetivo_set1>")
+        print("Uso: python main.py <makespan_objetivo>")
         sys.exit(1)
 
     try:
-        # El objetivo que escribes en la terminal será para el set 1
-        obj1 = int(sys.argv[1])
+        makespan_objetivo = int(sys.argv[1])
         
-        # PROBAMOS EL SET 1
-        ejecutar_planificacion("tareas.txt", "recursos.txt", obj1)
+        # ELIMINAMOS la función 'ejecutar_planificacion' y volvemos a lo simple
+        # para cumplir con el requisito de lectura automática 
+        tareas = leer_tareas("tareas.txt")
+        recursos = leer_recursos("recursos.txt")
+
+        asignaciones = planificar(tareas, recursos)
+
+        # El nombre debe ser exactamente output.txt 
+        escribir_output("output.txt", asignaciones)
         
-        # PROBAMOS EL SET 2 (ponemos un objetivo de 50 por probar)
-        ejecutar_planificacion("tareas_2.txt", "recursos_2.txt", 50)
+        makespan = calcular_makespan(asignaciones)
+        
+        print(f"Makespan obtenido: {makespan}")
+        
+        if makespan <= makespan_objetivo:
+            print("Cumple el objetivo")
+        else:
+            print("No cumple el objetivo")
 
-    except ValueError:
-        print("Error: El makespan objetivo debe ser un número entero.")
-
+    except Exception as e:
+        print(f"Error: {e}")
+    
 if __name__ == "__main__":
-    main()
+     main()
