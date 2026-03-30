@@ -104,49 +104,19 @@ def calcular_presion_por_categoria(tareas: Sequence[Tarea]) -> Dict[str, float]:
 
 
 def generar_ordenes_de_tareas(tareas: Sequence[Tarea]) -> List[List[int]]:
-    indices = list(range(len(tareas)))
+
     presion = calcular_presion_por_categoria(tareas)
 
-    orden_1 = sorted(
-        indices,
+    orden_maestro = sorted(
+        range(len(tareas)),
         key=lambda i: (
-            -tareas[i].duracion,
-            len(tareas[i].recursos_compatibles),
-            -presion[tareas[i].categoria],
-            tareas[i].id_tarea,
-        ),
+            presion[tareas[i].categoria],
+            tareas[i].duracion,  # Agregamos coma
+            tareas[i].id_tarea   # Quitamos el paréntesis de arriba y lo ponemos aquí
+        ), 
+        reverse=True
     )
-
-    orden_2 = sorted(
-        indices,
-        key=lambda i: (
-            len(tareas[i].recursos_compatibles),
-            -tareas[i].duracion,
-            -presion[tareas[i].categoria],
-            tareas[i].id_tarea,
-        ),
-    )
-
-    orden_3 = sorted(
-        indices,
-        key=lambda i: (
-            -presion[tareas[i].categoria],
-            len(tareas[i].recursos_compatibles),
-            -tareas[i].duracion,
-            tareas[i].id_tarea,
-        ),
-    )
-
-    orden_4 = sorted(
-        indices,
-        key=lambda i: (
-            -(tareas[i].duracion / len(tareas[i].recursos_compatibles)),
-            -tareas[i].duracion,
-            tareas[i].id_tarea,
-        ),
-    )
-
-    return [orden_1, orden_2, orden_3, orden_4]
+    return [orden_maestro]#Con uno bueno basta, ahorrar CPU
 
 
 def copiar_solucion(solucion: Solucion) -> Solucion:
@@ -166,101 +136,41 @@ def construir_solucion_greedy(
     tareas: Sequence[Tarea],
     recursos: Sequence[Recurso],
     orden_tareas: Sequence[int],
-    variante: int,
 ) -> Solucion:
     cantidad_recursos = len(recursos)
     asignacion = [-1] * len(tareas)
-    tareas_por_recurso: List[List[int]] = [[] for _ in range(cantidad_recursos)]
+    tareas_por_recurso = [[] for _ in range(cantidad_recursos)]
     cargas = [0] * cantidad_recursos
 
-    for posicion, indice_tarea in enumerate(orden_tareas):
+    # Recorremos las tareas en el orden de alta calidad que ya calculamos
+    for indice_tarea in orden_tareas:
         tarea = tareas[indice_tarea]
+        
+        # Estrategia de Mínima Carga: 
+        # Buscamos el recurso compatible que esté más libre actualmente
         mejor_recurso = tarea.recursos_compatibles[0]
-
-        if variante == 0:
-            mejor_clave = (
-                cargas[mejor_recurso] + tarea.duracion,
-                cargas[mejor_recurso],
-                len(tareas_por_recurso[mejor_recurso]),
-                recursos[mejor_recurso].id_recurso,
-            )
-            for r in tarea.recursos_compatibles[1:]:
-                clave = (
-                    cargas[r] + tarea.duracion,
-                    cargas[r],
-                    len(tareas_por_recurso[r]),
-                    recursos[r].id_recurso,
-                )
-                if clave < mejor_clave:
-                    mejor_clave = clave
+        min_carga = cargas[mejor_recurso]
+        
+        for r in tarea.recursos_compatibles[1:]:
+            if cargas[r] < min_carga:
+                min_carga = cargas[r]
+                mejor_recurso = r
+            # Desempate opcional por ID de recurso para que sea determinista
+            elif cargas[r] == min_carga:
+                if r < mejor_recurso:
                     mejor_recurso = r
-
-        elif variante == 1:
-            mejor_clave = (
-                cargas[mejor_recurso] + tarea.duracion,
-                len(recursos[mejor_recurso].categorias),
-                cargas[mejor_recurso],
-                recursos[mejor_recurso].id_recurso,
-            )
-            for r in tarea.recursos_compatibles[1:]:
-                clave = (
-                    cargas[r] + tarea.duracion,
-                    len(recursos[r].categorias),
-                    cargas[r],
-                    recursos[r].id_recurso,
-                )
-                if clave < mejor_clave:
-                    mejor_clave = clave
-                    mejor_recurso = r
-
-        elif variante == 2:
-            mejor_clave = (
-                cargas[mejor_recurso] + tarea.duracion,
-                len(tareas_por_recurso[mejor_recurso]),
-                cargas[mejor_recurso],
-                recursos[mejor_recurso].id_recurso,
-            )
-            for r in tarea.recursos_compatibles[1:]:
-                clave = (
-                    cargas[r] + tarea.duracion,
-                    len(tareas_por_recurso[r]),
-                    cargas[r],
-                    recursos[r].id_recurso,
-                )
-                if clave < mejor_clave:
-                    mejor_clave = clave
-                    mejor_recurso = r
-
-        else:
-            mejor_clave = (
-                cargas[mejor_recurso] + tarea.duracion,
-                (len(tareas_por_recurso[mejor_recurso]) + posicion) % 7,
-                cargas[mejor_recurso],
-                recursos[mejor_recurso].id_recurso,
-            )
-            for r in tarea.recursos_compatibles[1:]:
-                clave = (
-                    cargas[r] + tarea.duracion,
-                    (len(tareas_por_recurso[r]) + posicion) % 7,
-                    cargas[r],
-                    recursos[r].id_recurso,
-                )
-                if clave < mejor_clave:
-                    mejor_clave = clave
-                    mejor_recurso = r
-
+        
+        # Asignación definitiva
         asignacion[indice_tarea] = mejor_recurso
         tareas_por_recurso[mejor_recurso].append(indice_tarea)
         cargas[mejor_recurso] += tarea.duracion
 
-    makespan = calcular_makespan(cargas)
     return Solucion(
         asignacion=asignacion,
         tareas_por_recurso=tareas_por_recurso,
         cargas=cargas,
-        makespan=makespan,
+        makespan=max(cargas)
     )
-
 
 def intentar_reubicacion(
     tareas: Sequence[Tarea],
@@ -270,70 +180,63 @@ def intentar_reubicacion(
     if not solucion.cargas:
         return False
 
-    recurso_mas_cargado = max(range(len(solucion.cargas)), key=solucion.cargas.__getitem__)
-    makespan_actual = solucion.cargas[recurso_mas_cargado]
+    # 1. Identificar el recurso que dicta el makespan
+    recurso_max = -1
+    max_carga = -1
+    # Buscamos también el segundo máximo para saber si el movimiento realmente baja el makespan global
+    segundo_max_carga = -1
+    
+    for i, c in enumerate(solucion.cargas):
+        if c > max_carga:
+            segundo_max_carga = max_carga
+            max_carga = c
+            recurso_max = i
+        elif c > segundo_max_carga:
+            segundo_max_carga = c
 
-    if makespan_actual <= makespan_objetivo:
+    if max_carga <= makespan_objetivo:
         return False
 
+    # 2. Solo probamos mover tareas del recurso crítico (el más cargado)
+    # Aumentamos el rango a 100 para encontrar más oportunidades
     tareas_candidatas = sorted(
-        solucion.tareas_por_recurso[recurso_mas_cargado],
+        solucion.tareas_por_recurso[recurso_max],
         key=lambda i: tareas[i].duracion,
-        reverse=True,
-    )[:24]
+        reverse=True
+    )[:100]
 
-    recursos_ordenados = sorted(range(len(solucion.cargas)), key=solucion.cargas.__getitem__)[:32]
-
-    mejor_movimiento: Tuple[int, int, int] | None = None
-
-    for indice_tarea in tareas_candidatas:
-        tarea = tareas[indice_tarea]
-        compatibles = set(tarea.recursos_compatibles)
-
-        for indice_recurso in recursos_ordenados:
-            if indice_recurso == recurso_mas_cargado:
+    for idx_t in tareas_candidatas:
+        t = tareas[idx_t]
+        dur = t.duracion
+        
+        # Nueva carga potencial del recurso que suelta la tarea
+        carga_origen_post = max_carga - dur
+        
+        for r_dest in t.recursos_compatibles:
+            if r_dest == recurso_max:
                 continue
-            if indice_recurso not in compatibles:
-                continue
-
-            nueva_carga_origen = solucion.cargas[recurso_mas_cargado] - tarea.duracion
-            nueva_carga_destino = solucion.cargas[indice_recurso] + tarea.duracion
-
-            nuevo_makespan = 0
-            for i, carga in enumerate(solucion.cargas):
-                if i == recurso_mas_cargado:
-                    carga = nueva_carga_origen
-                elif i == indice_recurso:
-                    carga = nueva_carga_destino
-                if carga > nuevo_makespan:
-                    nuevo_makespan = carga
-
-            if nuevo_makespan < makespan_actual:
-                movimiento = (nuevo_makespan, indice_tarea, indice_recurso)
-                if mejor_movimiento is None or movimiento < mejor_movimiento:
-                    mejor_movimiento = movimiento
-                    if nuevo_makespan <= makespan_objetivo:
-                        break
-
-        if mejor_movimiento is not None and mejor_movimiento[0] <= makespan_objetivo:
-            break
-
-    if mejor_movimiento is None:
-        return False
-
-    _, indice_tarea, nuevo_recurso = mejor_movimiento
-    recurso_anterior = solucion.asignacion[indice_tarea]
-    duracion = tareas[indice_tarea].duracion
-
-    solucion.asignacion[indice_tarea] = nuevo_recurso
-    solucion.tareas_por_recurso[recurso_anterior].remove(indice_tarea)
-    solucion.tareas_por_recurso[nuevo_recurso].append(indice_tarea)
-    solucion.cargas[recurso_anterior] -= duracion
-    solucion.cargas[nuevo_recurso] += duracion
-    solucion.makespan = calcular_makespan(solucion.cargas)
-
-    return True
-
+            
+            carga_dest_post = solucion.cargas[r_dest] + dur
+            
+            # EL TRUCO DE VELOCIDAD:
+            # Un movimiento es bueno si la nueva carga del destino Y la nueva carga del origen
+            # son menores que el makespan actual.
+            if carga_dest_post < max_carga:
+                # Calculamos el nuevo makespan potencial de forma instantánea O(1)
+                # Es el máximo entre: la nueva carga origen, la nueva carga destino y el segundo máximo anterior
+                nuevo_ms = max(carga_origen_post, carga_dest_post, segundo_max_carga)
+                
+                if nuevo_ms < max_carga:
+                    # ¡Éxito! Aplicamos el movimiento
+                    solucion.asignacion[idx_t] = r_dest
+                    solucion.tareas_por_recurso[recurso_max].remove(idx_t)
+                    solucion.tareas_por_recurso[r_dest].append(idx_t)
+                    solucion.cargas[recurso_max] -= dur
+                    solucion.cargas[r_dest] += dur
+                    solucion.makespan = nuevo_ms
+                    return True
+                    
+    return False
 
 def intentar_swap(
     tareas: Sequence[Tarea],
@@ -343,90 +246,66 @@ def intentar_swap(
     if not solucion.cargas:
         return False
 
-    recurso_mas_cargado = max(range(len(solucion.cargas)), key=solucion.cargas.__getitem__)
-    makespan_actual = solucion.cargas[recurso_mas_cargado]
+    # 1. Identificar el recurso crítico y el segundo máximo
+    max_idx = -1
+    max_v = -1
+    segundo_max = -1
+    for i, c in enumerate(solucion.cargas):
+        if c > max_v:
+            segundo_max = max_v
+            max_v = c
+            max_idx = i
+        elif c > segundo_max:
+            segundo_max = c
 
-    if makespan_actual <= makespan_objetivo:
+    if max_v <= makespan_objetivo:
         return False
 
-    tareas_pesadas = sorted(
-        solucion.tareas_por_recurso[recurso_mas_cargado],
-        key=lambda i: tareas[i].duracion,
-        reverse=True,
-    )[:16]
+    # 2. Seleccionar candidatos (límites pequeños para no perder tiempo)
+    tareas_a = sorted(solucion.tareas_por_recurso[max_idx], 
+                     key=lambda i: tareas[i].duracion, reverse=True)[:20]
+    
+    # Solo probamos intercambiar con recursos que tengan poca carga
+    recursos_b = sorted(range(len(solucion.cargas)), 
+                       key=lambda i: solucion.cargas[i])[:15]
 
-    otros_recursos = sorted(
-        (r for r in range(len(solucion.cargas)) if r != recurso_mas_cargado),
-        key=solucion.cargas.__getitem__,
-    )[:20]
-
-    mejor_intercambio: Tuple[int, int, int, int] | None = None
-
-    for indice_tarea_a in tareas_pesadas:
-        tarea_a = tareas[indice_tarea_a]
-        compatibles_a = set(tarea_a.recursos_compatibles)
-
-        for recurso_b in otros_recursos:
-            tareas_b = sorted(solucion.tareas_por_recurso[recurso_b], key=lambda i: tareas[i].duracion)[:12]
-
-            for indice_tarea_b in tareas_b:
-                tarea_b = tareas[indice_tarea_b]
-
-                if recurso_b not in compatibles_a:
-                    continue
-                if recurso_mas_cargado not in set(tarea_b.recursos_compatibles):
-                    continue
-                if tarea_a.duracion <= tarea_b.duracion:
-                    continue
-
-                nueva_carga_a = solucion.cargas[recurso_mas_cargado] - tarea_a.duracion + tarea_b.duracion
-                nueva_carga_b = solucion.cargas[recurso_b] - tarea_b.duracion + tarea_a.duracion
-
-                nuevo_makespan = 0
-                for i, carga in enumerate(solucion.cargas):
-                    if i == recurso_mas_cargado:
-                        carga = nueva_carga_a
-                    elif i == recurso_b:
-                        carga = nueva_carga_b
-                    if carga > nuevo_makespan:
-                        nuevo_makespan = carga
-
-                if nuevo_makespan < makespan_actual:
-                    intercambio = (nuevo_makespan, indice_tarea_a, indice_tarea_b, recurso_b)
-                    if mejor_intercambio is None or intercambio < mejor_intercambio:
-                        mejor_intercambio = intercambio
-                        if nuevo_makespan <= makespan_objetivo:
-                            break
-
-            if mejor_intercambio is not None and mejor_intercambio[0] <= makespan_objetivo:
-                break
-
-        if mejor_intercambio is not None and mejor_intercambio[0] <= makespan_objetivo:
-            break
-
-    if mejor_intercambio is None:
-        return False
-
-    _, indice_tarea_a, indice_tarea_b, recurso_b = mejor_intercambio
-    recurso_a = recurso_mas_cargado
-
-    solucion.asignacion[indice_tarea_a] = recurso_b
-    solucion.asignacion[indice_tarea_b] = recurso_a
-
-    solucion.tareas_por_recurso[recurso_a].remove(indice_tarea_a)
-    solucion.tareas_por_recurso[recurso_b].remove(indice_tarea_b)
-    solucion.tareas_por_recurso[recurso_a].append(indice_tarea_b)
-    solucion.tareas_por_recurso[recurso_b].append(indice_tarea_a)
-
-    duracion_a = tareas[indice_tarea_a].duracion
-    duracion_b = tareas[indice_tarea_b].duracion
-
-    solucion.cargas[recurso_a] = solucion.cargas[recurso_a] - duracion_a + duracion_b
-    solucion.cargas[recurso_b] = solucion.cargas[recurso_b] - duracion_b + duracion_a
-    solucion.makespan = calcular_makespan(solucion.cargas)
-
-    return True
-
+    for idx_a in tareas_a:
+        t_a = tareas[idx_a]
+        dur_a = t_a.duracion
+        
+        for rb in recursos_b:
+            if rb == max_idx: continue
+            
+            # Solo probamos algunas tareas del recurso destino
+            for idx_b in solucion.tareas_por_recurso[rb][:15]:
+                t_b = tareas[idx_b]
+                dur_b = t_b.duracion
+                
+                # El swap solo sirve si la tarea que sacamos es más grande que la que entra
+                if dur_a <= dur_b: continue
+                
+                # Verificar compatibilidad (Uso de 'in' sobre la tupla es rápido)
+                if rb not in t_a.recursos_compatibles: continue
+                if max_idx not in t_b.recursos_compatibles: continue
+                
+                nueva_carga_a = max_v - dur_a + dur_b
+                nueva_carga_b = solucion.cargas[rb] - dur_b + dur_a
+                
+                # El nuevo makespan sería el máximo entre estas dos y lo que ya era el segundo máximo
+                nuevo_ms = max(nueva_carga_a, nueva_carga_b, segundo_max)
+                
+                if nuevo_ms < max_v:
+                    # Aplicar Swap
+                    solucion.asignacion[idx_a], solucion.asignacion[idx_b] = rb, max_idx
+                    solucion.tareas_por_recurso[max_idx].remove(idx_a)
+                    solucion.tareas_por_recurso[rb].remove(idx_b)
+                    solucion.tareas_por_recurso[max_idx].append(idx_b)
+                    solucion.tareas_por_recurso[rb].append(idx_a)
+                    solucion.cargas[max_idx] = nueva_carga_a
+                    solucion.cargas[rb] = nueva_carga_b
+                    solucion.makespan = nuevo_ms
+                    return True
+    return False
 
 def optimizar_solucion(
     tareas: Sequence[Tarea],
@@ -434,31 +313,28 @@ def optimizar_solucion(
     makespan_objetivo: int,
     tiempo_limite: float,
 ) -> Solucion:
-    mejor = copiar_solucion(solucion_inicial)
+    # Usamos la misma solución (sin copiar al principio) para ahorrar memoria
+    # ya que intentar_reubicacion ya modifica 'actual'
     actual = copiar_solucion(solucion_inicial)
-    sin_mejora = 0
-
+    
+    # Bucle infinito hasta que se agote el tiempo de CPU
     while time.perf_counter() < tiempo_limite:
-        mejoro = False
-
+        # Intentamos mover tareas. Si no hay éxito con reubicación, 
+        # opcionalmente podrías probar swap, pero reubicación es más rápida.
         if intentar_reubicacion(tareas, actual, makespan_objetivo):
-            mejoro = True
-        elif intentar_swap(tareas, actual, makespan_objetivo):
-            mejoro = True
-
-        if mejoro:
-            sin_mejora = 0
-            if actual.makespan < mejor.makespan:
-                mejor = copiar_solucion(actual)
-                if mejor.makespan <= makespan_objetivo:
-                    break
-        else:
-            sin_mejora += 1
-            if sin_mejora >= 3:
+            # Si alcanzamos la meta, salimos de inmediato
+            if actual.makespan <= makespan_objetivo:
                 break
+        else:
+            # Si no hay movimientos de reubicación, intentamos swap
+            if not intentar_swap(tareas, actual, makespan_objetivo):
+                # Si ni reubicación ni swap encuentran nada, 
+                # esperamos un milisegundo o probamos con una tarea aleatoria
+                # para no saturar la CPU en un bucle vacío, 
+                # o simplemente salimos si ya estamos satisfechos.
+                break 
 
-    return mejor
-
+    return actual
 
 def validar_solucion(
     tareas: Sequence[Tarea],
@@ -536,43 +412,32 @@ def resolver(
     recursos: Sequence[Recurso],
     makespan_objetivo: int,
 ) -> Solucion:
-    tiempo_limite_global = time.perf_counter() + 9.7
-    mejor_solucion: Solucion | None = None
+    # 1. Definimos el tiempo límite global (9.5s para dejar margen de guardado)
+    tiempo_inicio = time.perf_counter()
+    tiempo_limite_global = tiempo_inicio + 9.5
+    
+    # 2. Generamos el orden maestro (ahora devuelve una lista con un solo orden)
+    ordenes = generar_ordenes_de_tareas(tareas)
+    orden_maestro = ordenes[0]
+    
+    # 3. Construimos la solución inicial con el greedy rápido
+    # Nota: Ya no pasamos el parámetro 'variante'
+    mejor_solucion = construir_solucion_greedy(tareas, recursos, orden_maestro)
+    
+    # Si por casualidad la inicial ya cumple el objetivo, terminamos
+    if mejor_solucion.makespan <= makespan_objetivo:
+        return mejor_solucion
 
-    for orden in generar_ordenes_de_tareas(tareas):
-        for variante in range(4):
-            if time.perf_counter() >= tiempo_limite_global:
-                break
-
-            candidata = construir_solucion_greedy(tareas, recursos, orden, variante)
-
-            if mejor_solucion is None or candidata.makespan < mejor_solucion.makespan:
-                mejor_solucion = candidata
-
-            tiempo_restante = tiempo_limite_global - time.perf_counter()
-            if tiempo_restante <= 0:
-                break
-
-            tiempo_limite_local = min(
-                tiempo_limite_global,
-                time.perf_counter() + min(0.60, tiempo_restante * 0.55),
-            )
-
-            mejorada = optimizar_solucion(
-                tareas=tareas,
-                solucion_inicial=candidata,
-                makespan_objetivo=makespan_objetivo,
-                tiempo_limite=tiempo_limite_local,
-            )
-
-            if mejor_solucion is None or mejorada.makespan < mejor_solucion.makespan:
-                mejor_solucion = mejorada
-
-    if mejor_solucion is None:
-        raise ValueError("No se pudo construir ninguna solución.")
+    # 4. Optimizamos hasta que se agote el tiempo
+    # Aquí es donde el programa pasará el 98% del tiempo bajando el makespan
+    mejor_solucion = optimizar_solucion(
+        tareas=tareas,
+        solucion_inicial=mejor_solucion,
+        makespan_objetivo=makespan_objetivo,
+        tiempo_limite=tiempo_limite_global,
+    )
 
     return mejor_solucion
-
 
 def leer_makespan_objetivo(argumentos: Sequence[str]) -> int:
     if len(argumentos) < 2:
